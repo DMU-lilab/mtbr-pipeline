@@ -1,0 +1,85 @@
+#!/usr/bin/env Rscript
+
+# find region mtbr Value
+
+# load library
+
+suppressPackageStartupMessages(library("optparse", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+suppressPackageStartupMessages(library("methyutils", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+suppressPackageStartupMessages(library("reshape2", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+
+##Specify desired options in a list
+
+option_list <- list(
+    #make_option(c("-r","--region-path"), help="region path (used to read the region file)", default = "./"),
+    make_option(c("-p","--project-path"), help="project path(used to read the samples cg.mtbr file  )", default = "./"),
+	make_option(c("-o","--output-path"), help=" use to save the result", default = "./"),
+	make_option(c("-n","--genome-name"), help="genome object name. ex: \"mm9\", \"hg19\"", default = "mm9")
+)
+
+# Get command line options
+
+arguments <- parse_args(OptionParser(usage = "%prog [options] regionPath", option_list = option_list), positional_arguments = 1)
+opt <- arguments$options
+
+#kRegionPath <- opt$`region-path`
+kProjectPath <- opt$`project-path`
+kOutputPath <- opt$`output-path`
+kGenomeName <- opt$`genome-name`
+
+kRegionPath <- arguments$args
+
+# Get region file names
+
+
+if(!file.exists(kRegionPath)){
+	stop("region file path \"", kRegionPath ,"\" does not exist.")
+}
+
+region.filenames <- list.files(kRegionPath)
+
+# Get simple file names in order to read the cg.mtbr file
+
+if(!file.exists(kProjectPath)){
+	stop("project file path \"", kProjectPath ,"\" does not exist.")
+}
+
+sample.filenames <- list.files(kProjectPath)
+
+# find mtbr Value in the region 
+SampleValuelist <- list()
+for (sample.name in sample.filenames){
+	ValueChrlist <- list()
+	for (file.name in region.filenames){
+		
+		message(sample.name,"-",file.name," is running","\t",date())
+		region.path <- file.path(kRegionPath,file.name)
+		cgmtbr.path <- file.path(kProjectPath,sample.name,"Rdepot/mtbr_cg",paste( file.name, ".Rdata",sep=""))
+		
+		# read the region file and load the cg.mtbr file
+		
+		region <- read.table(region.path)
+		load(cgmtbr.path)
+		
+		# get the region mtbr Value
+		regionValue <- GetValueFromMtbrByRegion(cg.mtbr,region,geonome=kGenomeName)
+		
+		# put into ValueChrlist
+		ValueChrlist[[file.name]] <- regionValue	
+	}
+	ValueChr <- do.call(rbind,ValueChrlist)
+	SampleValuelist[[sample.name]] <- ValueChr
+	SampleValuelist[[sample.name]]$samples <- sample.name
+}
+regionValue <- do.call(rbind,SampleValuelist)
+
+# reshape value in regionValue data.frame
+m <- melt(regionValue,id=c("chrom","start","end","samples","cgNum"))
+rv <- dcast(data=m, chrom + start + end + cgNum ~ samples + variable,fun.aggregate=mean)
+
+#save the file
+savefile <- file.path(kOutputPath,"region_mtbr_value.txt")
+write.table(rv,savefile,row.names=F,col.names=T,quote=F) 
+
+
+

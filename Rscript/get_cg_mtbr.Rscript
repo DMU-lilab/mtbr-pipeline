@@ -1,0 +1,144 @@
+#!/usr/bin/env Rscript
+
+# mtbr pipline
+
+# Load libraries
+
+suppressPackageStartupMessages(library("optparse", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+suppressPackageStartupMessages(library("methyutils", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+suppressPackageStartupMessages(library("reshape2", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+suppressPackageStartupMessages(library("data.table", quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+
+##Specify desired options in a list
+
+option_list <- list(
+    make_option(c("-a","--position-offset"), help="adjust the position of mtbr$posi column", default = 0),
+    make_option(c("-d","--mtbr-header"), help="mtbr files have headers", default = FALSE),
+    make_option(c("-l","--genome-library"), help="Bioconductor BSgenome library name", default = "BSgenome.Mmusculus.UCSC.mm9"),
+    make_option(c("-n","--genome-name"), help="genome library object name. ex: \"Mmusculus\", \"Hsapiens\", \"Scerevisiae\"", default = "Mmusculus"),
+    make_option(c("-t","--genome-type"), help="genome type , example mm9, mm10, hg19, hg18, default is NULL", default = ""),
+    make_option(c("-p","--project-path"), help="project path(used to construct the mtbr output path)", default = "./"),
+    make_option(c("-w","--wig-type"), help="wig type include separated,mixed and all ", default = "separated")
+)
+
+# Get command line options
+
+arguments <- parse_args(OptionParser(usage = "%prog [options] mtbrPath", option_list = option_list), positional_arguments = 1)
+opt <- arguments$options
+
+kPositionOffset <- opt$`position-offset`
+kProjectPath <- opt$`project-path`
+kMtbrHeader <- opt$`mtbr-header`
+kGenomeLibrary <- opt$`genome-library`
+kGenomeName <- opt$`genome-name`
+kGenomeType <- opt$`genome-type`
+kWigType <- opt$`wig-type`
+kMtbrPath <- arguments$args
+
+# Get mtbr file names
+
+if(!file.exists(kMtbrPath)){
+	stop("mtbr file path \"", kMtbrPath ,"\" does not exist.")
+}
+
+mtbr.filenames <- list.files(kMtbrPath)
+
+# load the genome library
+
+kGenomeTypeList <- list(
+	mm9  = list(genome.library="BSgenome.Mmusculus.UCSC.mm9",genome.name="Mmusculus"),
+	mm10 = list(genome.library="BSgenome.Mmusculus.UCSC.mm10",genome.name="Mmusculus"),
+	hg18 = list(genome.library="BSgenome.Hsapiens.UCSC.hg18",genome.name="Hsapiens"),
+	hg19 = list(genome.library="BSgenome.Hsapiens.UCSC.hg19",genome.name="Hsapiens")
+)
+kGenome <- NULL
+
+if ( kGenomeType %in% names(kGenomeTypeList) ){
+	suppressPackageStartupMessages(library(kGenomeTypeList[[kGenomeType]][["genome.library"]], character.only = TRUE, quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+	kGenome <- get(kGenomeTypeList[[kGenomeType]][["genome.name"]]) 
+}else {
+	suppressPackageStartupMessages(library(kGenomeLibrary, character.only = TRUE, quietly=TRUE, verbose=FALSE, warn.conflicts=FALSE))
+	kGenome <- get(kGenomeName) 
+}
+
+
+if ( is.null(kGenome)){
+	stop( "Load Biocondutor Genome Library ERROR " )
+}
+# create mtbr Rdata output path
+
+sample.name <- paste(head(unlist(strsplit(basename(kMtbrPath), ".", fixed = TRUE)),-1),sep="",collapse = "." )
+
+kMtbrRdataPath <- paste(kProjectPath, "/", sample.name,".cg/",sep = "")
+kWigPath <- paste(kProjectPath,"/",sample.name,".wig/",sep= "") 
+
+if(!file.exists(kMtbrRdataPath)){
+	dir.create(kMtbrRdataPath,recursive = TRUE)
+}
+
+if(!file.exists(kWigPath)){
+	dir.create(kWigPath,recursive = TRUE)
+}
+
+
+# read and process the mtbr files
+for (file.name in mtbr.filenames){
+ file.path <- paste(kMtbrPath, "/", file.name, sep="")
+
+ if(file_test("-f", file.path))
+ {
+ 	message("[*] Processing ", file.name, "\t", date())
+ 
+ 	# read the mtbr file
+ 	
+ 	message("\treading the mtbr file", "\t", date())
+ 	
+ 	mtbr <- fread(file.path, header=kMtbrHeader, showProgress=FALSE,data.table=FALSE)
+ 	
+ 	# adjust the mtbr positions
+ 	
+ 	mtbr[,2] <- mtbr[,2] + kPositionOffset
+ 	
+ 	# get CG position
+ 	
+ 	message("\tgetting CG position ", "\t", date())
+ 	
+ 	dna.seq <- kGenome[[file.name]]
+ 	cg.position <- GetCcontextPosition(dna.seq)
+	
+	# get mtbr 
+	
+	message("\tgetting CG mtbr ", "\t", date())
+	
+	cg.mtbr <- NULL
+ 	cg.mtbr <- GetCGmtbr(mtbr,cg.position)
+ 	
+ 	# save the cg.mtbr to Rdata
+ 	
+ 	message("\tsaving CG mtbr to .Rdata", "\t", date())
+ 	
+ 	cgmtbr.filepath <- paste(kMtbrRdataPath, "/", file.name, ".Rdata", sep="")
+  	SaveMtbrRdata(cg.mtbr,cgmtbr.filepath)
+ 	
+ 	# get wig file
+ 	
+	message("\t get cgwig file","\t",date())
+	
+	if (kWigType == "separated"){
+		WriteSeparatedWig(cg.mtbr,kWigPath,file.name)
+ 	} else if(kWigType == "mixed"){
+		WriteMixedWig(cg.mtbr,kWigPath,file.name)
+	} else if(kWigType == "all"){
+		WriteSeparatedWig(cg.mtbr,kWigPath,file.name)
+		WriteMixedWig(cg.mtbr,kWigPath,file.name)
+	} else {
+		WriteSeparatedWig(cg.mtbr,kWigPath,file.name)
+		WriteMixedWig(cg.mtbr,kWigPath,file.name)
+		message("warning: unrecognized wig-type option",kWigType, "using all")
+	}
+ }
+
+}
+
+
+
