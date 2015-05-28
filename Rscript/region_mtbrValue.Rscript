@@ -54,7 +54,7 @@ for (sample.name in sample.filenames){
 		
 		message(sample.name,"-",file.name," is running","\t",date())
 		region.path <- file.path(kRegionPath,file.name)
-		cgmtbr.path <- file.path(kProjectPath,sample.name,"Rdepot/mtbr_cg",paste( file.name, ".Rdata",sep=""))
+		cgmtbr.path <- file.path(kProjectPath,sample.name,paste(sample.name,".mtbr.cg",sep=""),paste( file.name, ".Rdata",sep=""))
 		
 		# read the region file and load the cg.mtbr file
 		
@@ -62,7 +62,7 @@ for (sample.name in sample.filenames){
 		load(cgmtbr.path)
 		
 		# get the region mtbr Value
-		regionValue <- GetValueFromMtbrByRegion(cg.mtbr,region,geonome=kGenomeName)
+		regionValue <- GetValueFromMtbrByRegion(cg.mtbr,region,genome=kGenomeName)
 		
 		# put into ValueChrlist
 		ValueChrlist[[file.name]] <- regionValue	
