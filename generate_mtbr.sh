@@ -267,12 +267,37 @@ fi
 
 echo "[*] Converting & Sorting C2T & G2A bam files..." | tee -a ${log_file}
 
+### edit by Jimmy ###
+### add wait function ###
+ct-view(){
+	${samtoolscmd} view -b ${temp_ct_sam_file} -o ${temp_ct_bam_file} >> ${log_file} 2>&1 &
+	wait
+}
+ga-view(){
+	${samtoolscmd} view -b ${temp_ga_sam_file} -o ${temp_ga_bam_file} >> ${log_file} 2>&1 &
+	wait
+}
+ct-sort(){
+	${samtoolscmd} sort -m 5G ${temp_ct_bam_file} -o ${temp_ct_sorted_file} -T ${temp_ct_sorted_file} -@ 5 >> ${log_file} 2>&1 &
+	wait
+}
+ga-sort(){
+	${samtoolscmd} sort -m 5G ${temp_ga_bam_file} -o ${temp_ga_sorted_file} -T ${temp_ga_sorted_file} -@ 5 >> ${log_file} 2>&1 &
+	wait
+}
+
 if [ -z ${progress_sort_sam} ]
 then
-	${samtoolscmd} view -b ${temp_ct_sam_file} -o ${temp_ct_bam_file} >> ${log_file} 2>&1
-	${samtoolscmd} sort -m 5G ${temp_ct_bam_file} -o ${temp_ct_sorted_file} -T ${temp_ct_sorted_file} >> ${log_file} 2>&1
-	${samtoolscmd} view -b ${temp_ga_sam_file} -o ${temp_ga_bam_file} >> ${log_file} 2>&1
-	${samtoolscmd} sort -m 5G ${temp_ga_bam_file} -o ${temp_ga_sorted_file} -T ${temp_ga_sorted_file} >> ${log_file} 2>&1
+	#${samtoolscmd} view -b ${temp_ct_sam_file} -o ${temp_ct_bam_file} >> ${log_file} 2>&1
+	#${samtoolscmd} sort -m 5G ${temp_ct_bam_file} -o ${temp_ct_sorted_file} -T ${temp_ct_sorted_file} >> ${log_file} 2>&1
+	#${samtoolscmd} view -b ${temp_ga_sam_file} -o ${temp_ga_bam_file} >> ${log_file} 2>&1
+	#${samtoolscmd} sort -m 5G ${temp_ga_bam_file} -o ${temp_ga_sorted_file} -T ${temp_ga_sorted_file} >> ${log_file} 2>&1
+	ct-view &
+	ga-view &
+	wait
+	ct-sort &
+	ga-sort &
+	wait
 	echo "progress_sort_sam=OK" >> ${progress_file}
 fi
 
