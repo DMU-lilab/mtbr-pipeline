@@ -3,6 +3,8 @@
 usage()
 {
 	echo "usage: `basename $0` mtbr.conf in.sam"
+	echo "version: 0.1.1"
+	echo "Edited time: 2015-09-01"
 }
 
 checkerror()
@@ -365,13 +367,13 @@ mkdir ${bigwig_path}
 if [ -z ${progress_build_trackhub} ]
 then
 	if [ -z "${genome_type}" ]
-	then
+        then
 
-		while [ "${genome_type}" != "mm9"  ] && [ "${genome_type}" != "mm10" ] && [ "${genome_type}" != "hg18" ] && [ "${genome_type}" != "hg19" ] 
-		do
-			read -p "Require genome type [ mm9 | mm10 | hg18 | hg19 ]: " genome_type
-		done
-	fi
+                while [ "${genome_type}" != "mm9"  ] && [ "${genome_type}" != "mm10" ] && [ "${genome_type}" != "hg18" ] && [ "${genome_type}" != "hg19" ] && [ "${genome_type}" != "hg38" ] 
+                do
+                        read -p "Require genome type [ mm9 | mm10 | hg18 | hg19 | hg38 ]: " genome_type
+                done
+        fi
 	
 	chrom_sizes="${script_path}/chrom.sizes/${genome_type}.chrom.sizes"	
 	wig_files=`find ${wig_path} -maxdepth 1 -type f -name "*.wig"`

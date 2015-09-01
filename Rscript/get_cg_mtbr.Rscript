@@ -22,7 +22,6 @@ option_list <- list(
 )
 
 # Get command line options
-
 arguments <- parse_args(OptionParser(usage = "%prog [options] mtbrPath", option_list = option_list), positional_arguments = 1)
 opt <- arguments$options
 
@@ -49,7 +48,8 @@ kGenomeTypeList <- list(
 	mm9  = list(genome.library="BSgenome.Mmusculus.UCSC.mm9",genome.name="Mmusculus"),
 	mm10 = list(genome.library="BSgenome.Mmusculus.UCSC.mm10",genome.name="Mmusculus"),
 	hg18 = list(genome.library="BSgenome.Hsapiens.UCSC.hg18",genome.name="Hsapiens"),
-	hg19 = list(genome.library="BSgenome.Hsapiens.UCSC.hg19",genome.name="Hsapiens")
+	hg19 = list(genome.library="BSgenome.Hsapiens.UCSC.hg19",genome.name="Hsapiens"),
+	hg38 = list(genome.library="BSgenome.Hsapiens.UCSC.hg38",genome.name="Hsapiens")
 )
 kGenome <- NULL
 
